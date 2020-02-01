@@ -12,14 +12,44 @@ const session = new RedisSession({
 })
  
 bot.use(session)
-bot.start((ctx) => ctx.reply('Welcome!'))
+bot.start((ctx) => ctx.reply('Welcome! Send me a sticker'))
 bot.help((ctx) => ctx.reply('Send me a sticker'))
 bot.on('sticker', (ctx) => ctx.reply('👍'))
 bot.hears('hi', (ctx) => ctx.reply('Hey there'))
-
-bot.on('text', (ctx) => {
-  ctx.session.counter = ctx.session.counter || 0
-  ctx.session.counter++
-  return ctx.reply('Message counter:' + ctx.session.counter)
+bot.hears('add', (ctx) => ctx.reply('Forward message from a channel and I will sub it'))
+bot.hears('del', (ctx) => {
+	ctx.session.subscribed_channels = ctx.session.subscribed_channels || []
+	ctx.reply('Select a channel to unsub: ' + 
+		JSON.stringify(ctx.session.subscribed_channels.map(it=>it.title)))
 })
+bot.hears('list', (ctx) =>{
+	console.log(ctx.message)
+	ctx.reply('Channels ' + JSON.stringify(ctx.session.subscribed_channels))
+})
+bot.hears('flush', (ctx) => {
+	console.log(ctx.message)
+	ctx.session.subscribed_channels  = []
+	ctx.reply('Removed all subs')
+})
+
+bot.on('forward', (ctx) => {
+  console.log(ctx.message)
+  if(!ctx.message.forward_from_chat
+  	|| ctx.message.forward_from_chat.type != 'channel') 
+  	ctx.reply('Forward message from channel please')
+  ctx.session.subscribed_channels = ctx.session.subscribed_channels || []
+
+  console.log(ctx.message)
+  if (ctx.session.subscribed_channels.includes(ctx.message.forward_from_chat)){
+  	  ctx.session.subscribed_channels = ctx.session.subscribed_channels
+  	    .filter(item => item !== ctx.message.forward_from_chat)
+  	  return ctx.reply('Unsubscribed on channel ' + 
+  	  	JSON.stringify(ctx.message.forward_from_chat))
+  	} else {
+  	  ctx.session.subscribed_channels.push(ctx.message.forward_from_chat)
+  	  return ctx.reply('Subscribed on channel ' + 
+  	  	JSON.stringify(ctx.message.forward_from_chat))
+  	}
+  })
+
 bot.launch()
